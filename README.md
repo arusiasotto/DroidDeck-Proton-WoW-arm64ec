@@ -17,8 +17,8 @@ running Windows games through ARM64 Proton with FEX.
 ## What's inside
 
 DroidDeck-Proton is GE-Proton (DXVK, vkd3d-proton, FEX, protonfixes, media stack and the `proton`
-script, unchanged) with Wine built in seven tiers. Each tier is a tag on the Wine branch, so any one of
-them can be bisected or turned off on its own.
+script, unchanged) with Wine built in eight tiers. Tiers 1–7 are tags on the Wine branch; tier 8 is a
+patch series applied at build time on top of tier 7, so each tier can be bisected or turned off on its own.
 
 | Tier | Contents | Tag |
 |---|---|---|
@@ -29,7 +29,7 @@ them can be bisected or turned off on its own.
 | 5 | DroidDeck esync, built in | `bp-11.9-tier5` |
 | 6 | SD card fixes (games on `noexec` storage, drive-root copies) | `bp-11.9-tier6` |
 | 7 | Media fixes (DirectShow FMVs no longer upside down) | `bp-11.9-tier7` |
-| 8 | WoW Forever ARM64EC fixes | `patches/wow-tier8/*.patch` (applied at build time) |
+| 8 | WoW Forever (**WowB-ARM64.exe**, ARM64EC) on DroidDeck | `patches/wow-tier8/*.patch` (see `banner-proton/apply-wine-tier8.sh`) |
 
 Wine source: [`The412Banner/proton-wine`](https://github.com/The412Banner/proton-wine), branch
 `banner-proton/11.9` (the `wine` submodule). Versions and pins: `banner-proton/VERSION` and `banner-proton/PINS`.
@@ -156,6 +156,29 @@ Not taken: the `LC_ALL=C.UTF-8` default (bionic-only; DroidDeck uses glibc).
 </details>
 
 <details>
+<summary><b>Tier 8 – WoW Forever (ARM64EC)</b></summary>
+
+Patches in [`patches/wow-tier8/`](patches/wow-tier8/) are applied to the pinned `wine` submodule
+(**`bp-11.9-tier7`**) after `banner-proton/prep.sh`, before the Wine build. They are **not** committed
+inside the `wine` submodule.
+
+Target: **World of Warcraft Forever** native client **`WowB-ARM64.exe`** (ARM64EC) under DroidDeck.
+Install Battle.net and the game on **`C:`** like a normal prefix; use Battle.net **Play** or DroidDeck's
+launch-arguments field (e.g. `-d3d11`) — no extra launcher scripts required for this fork.
+
+| Patch | What it fixes |
+|---|---|
+| `0001` | Zero the stack `CONTEXT` in `setup_exception` before `save_context` (stale debug-register bits → intermittent **Game Initialization Failed: I**) |
+| `0002` | ARM64 syscall stubs: if `TEB->ChpeV2CpuAreaInfo` is set, dispatch via `KeServiceDescriptorTable[0].CounterTable`; otherwise keep Wine's PC-literal `__wine_syscall_dispatcher` path (`include/wine/asm.h`) |
+| `0003` | Publish `__wine_syscall_dispatcher` in `KeServiceDescriptorTable[0].CounterTable` on aarch64 (`dlls/ntdll/unix/syscall.c`) |
+| `0004` | On section-map failure **and** `is_arm64ec()` only: load NLS files into `PAGE_READONLY` VM (`locale.nls` / `l_intl.nls` / codepage fallbacks in `dlls/ntdll/unix/env.c`) |
+
+CI applies tier 8 in [`.github/workflows/_group.yml`](.github/workflows/_group.yml) and checks the
+expected source markers in the **Wine protocol** job of [`build-aarch64.yml`](.github/workflows/build-aarch64.yml).
+
+</details>
+
+<details>
 <summary><b>Building</b></summary>
 
 Builds run on GitHub Actions (`ubuntu-24.04-arm`, Valve's `steamrt4` arm64 Proton SDK), like GE's
@@ -169,10 +192,11 @@ aarch64 builds.
 - **Caches** – each group's output is keyed by its sources and skipped when cached; per-group ccache;
   SDK image cache.
 - **CI guards** – Wine protocol and ntdll exports unchanged; tier 6 and 7 fixes present in source and
-  binaries (trace strings); no leftover "Banner-Proton" names.
+  binaries (trace strings); tier 8 patch markers in `wine/` after `apply-wine-tier8.sh`; no leftover
+  "Banner-Proton" names.
 
 Local builds: follow [docs/README.GE-Proton.md](docs/README.GE-Proton.md), using `banner-proton/prep.sh`
-instead of `patches/protonprep-valve-staging.sh` and
+and `banner-proton/apply-wine-tier8.sh` instead of `patches/protonprep-valve-staging.sh` and
 `../configure.sh --target-arch=arm64 --build-name=DroidDeck-Proton-<version> --display-name="DroidDeck-Proton <version>"`.
 
 </details>
