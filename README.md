@@ -37,7 +37,7 @@ Wine source: [`The412Banner/proton-wine`](https://github.com/The412Banner/proton
 _Formerly Banner-Proton; releases up to 11-7.2 used the old name._
 
 <details>
-<summary><b>Pins (11-9.1)</b></summary>
+<summary><b>Pins (11-9.1-arm64ec)</b></summary>
 
 | Component | Commit |
 |---|---|
@@ -197,7 +197,7 @@ aarch64 builds.
 
 Local builds: follow [docs/README.GE-Proton.md](docs/README.GE-Proton.md), using `banner-proton/prep.sh`
 and `banner-proton/apply-wine-tier8.sh` instead of `patches/protonprep-valve-staging.sh` and
-`../configure.sh --target-arch=arm64 --build-name=DroidDeck-Proton-<version> --display-name="DroidDeck-Proton <version>"`.
+`../configure.sh --target-arch=arm64 --build-name=DroidDeck-Proton-<version>-arm64ec --display-name="DroidDeck-Proton <base> ARM64EC"`.
 
 </details>
 
