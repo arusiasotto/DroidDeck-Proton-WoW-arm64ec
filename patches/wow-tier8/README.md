@@ -18,7 +18,7 @@ Apply in numeric order:
 | `0002-…` | ARM64/ARM64EC syscall stubs: TEB `KeServiceDescriptorTable[0].CounterTable` dispatch when `ChpeV2CpuAreaInfo` is set (`include/wine/asm.h`, not `tools/make_requests`) |
 | `0003-…` | Publish `__wine_syscall_dispatcher` in `KeServiceDescriptorTable[0].CounterTable` on aarch64 |
 | `0004-…` | ARM64EC-only NLS fallback via `read_nls_file` + `NtAllocateVirtualMemory` (`env.c`) |
-| `0005-…` | Runtime `__wine_syscall_dispatcher_slot` + `ntdll_arm64ec_sync_syscall_dispatch()` so EC threads refresh KSDT/TEB syscall tables after `ChpeV2` setup (`syscall.c`, `thread.c`) |
+| `0005-…` | PE `.data` `__wine_syscall_dispatcher_slot` (`signal_arm64.c`) plus `ntdll_arm64ec_sync_syscall_dispatch()` so EC threads refresh KSDT/TEB syscall tables after `ChpeV2` setup (`syscall.c`, `thread.c`) |
 
 Patch **0002** loads the non-TEB fallback via `__wine_syscall_dispatcher_slot` (not the PE `.data` slot),
 which stays empty when WoW maps its own `ntdll.dll`.
