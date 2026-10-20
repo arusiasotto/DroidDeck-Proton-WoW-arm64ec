@@ -1,0 +1,12 @@
+diff --git a/dlls/ntdll/unix/signal_arm64.c b/dlls/ntdll/unix/signal_arm64.c
+index c8ebcae..3d059bb 100644
+--- a/dlls/ntdll/unix/signal_arm64.c
++++ b/dlls/ntdll/unix/signal_arm64.c
+@@ -806,6 +806,7 @@ static void setup_exception( ucontext_t *sigcontext, EXCEPTION_RECORD *rec )
+ {
+     CONTEXT context;
+ 
++    memset( &context, 0, sizeof(context) );
+     rec->ExceptionAddress = (void *)PC_sig(sigcontext);
+     save_context( &context, sigcontext );
+     setup_raise_exception( sigcontext, rec, &context );

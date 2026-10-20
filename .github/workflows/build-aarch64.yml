@@ -245,6 +245,19 @@ jobs:
           has $q "if (filter->have_sample_row_order)"
           has $q "winedmo_transform_set_output_format(filter->winedmo_transform,"
           exit $fail
+      - name: Tier 8 WoW patches in wine source
+        run: |
+          banner-proton/apply-wine-tier8.sh
+          cd wine
+          fail=0
+          has() { local n; n=$(grep -cF -- "$2" "$1" || true); if [ "$n" -ge "${3:-1}" ]; then echo "ok: $1 has \"$2\" ($n)"; else echo "MISSING in $1: \"$2\" (found $n, want ${3:-1})"; fail=1; fi; }
+          has dlls/ntdll/unix/signal_arm64.c "memset( &context, 0, sizeof(context) );"
+          has include/wine/asm.h "ldr x17, [x18, #0x1788]"
+          has include/wine/asm.h "ldr x16, [x16, #8]"
+          has dlls/ntdll/unix/syscall.c "(ULONG_PTR *)__wine_syscall_dispatcher"
+          has dlls/ntdll/unix/env.c "map_nls_file_as_view"
+          has dlls/ntdll/unix/env.c "is_arm64ec()"
+          exit $fail
 
   verify:
     name: Verify tarball
