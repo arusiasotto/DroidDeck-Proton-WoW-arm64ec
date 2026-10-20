@@ -259,6 +259,7 @@ jobs:
           has dlls/ntdll/unix/syscall.c "__wine_syscall_dispatcher_slot"
           has dlls/ntdll/unix/syscall.c "ntdll_arm64ec_sync_syscall_dispatch"
           has include/wine/asm.h "__wine_syscall_dispatcher_slot"
+          has dlls/ntdll/signal_arm64.c "__wine_syscall_dispatcher_slot"
           has dlls/ntdll/unix/env.c "map_nls_file_as_view"
           has dlls/ntdll/unix/env.c "is_arm64ec()"
           exit $fail

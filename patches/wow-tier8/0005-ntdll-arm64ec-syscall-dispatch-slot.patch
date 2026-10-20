@@ -1,12 +1,30 @@
+diff --git a/dlls/ntdll/signal_arm64.c b/dlls/ntdll/signal_arm64.c
+index 80a9466..a1c3d4e 100644
+--- a/dlls/ntdll/signal_arm64.c
++++ b/dlls/ntdll/signal_arm64.c
+@@ -48,6 +48,14 @@ WINE_DECLARE_DEBUG_CHANNEL(relay);
+ ALL_SYSCALLS
+ #undef SYSCALL_ENTRY
+ 
++__ASM_BLOCK_BEGIN(__LINE__)
++asm( ".data\n\t"
++     ".balign 8\n\t"
++     __ASM_GLOBL(__ASM_NAME("__wine_syscall_dispatcher_slot")) "\n\t"
++     ".quad 0\n\t"
++     ".text" );
++__ASM_BLOCK_END
++
+ 
+ /**************************************************************************
+  *		__chkstk (NTDLL.@)
 diff --git a/dlls/ntdll/unix/syscall.c b/dlls/ntdll/unix/syscall.c
 index 413f5f8..e530843 100644
 --- a/dlls/ntdll/unix/syscall.c
 +++ b/dlls/ntdll/unix/syscall.c
-@@ -246,6 +246,16 @@ static BYTE syscall_args[ARRAY_SIZE(syscalls)] =
+@@ -246,6 +246,15 @@ static BYTE syscall_args[ARRAY_SIZE(syscalls)] =
  
  #ifdef __aarch64__
  extern void __wine_syscall_dispatcher(void);
-+ULONG_PTR __wine_syscall_dispatcher_slot;
 +
 +void ntdll_arm64ec_sync_syscall_dispatch( TEB *teb )
 +{
@@ -19,6 +37,7 @@ index 413f5f8..e530843 100644
  #endif
  
  SYSTEM_SERVICE_TABLE KeServiceDescriptorTable[4] =
+ {
 diff --git a/dlls/ntdll/unix/thread.c b/dlls/ntdll/unix/thread.c
 index 8e50709..42d6264 100644
 --- a/dlls/ntdll/unix/thread.c
