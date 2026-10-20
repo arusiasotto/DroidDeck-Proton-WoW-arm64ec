@@ -29,6 +29,7 @@ them can be bisected or turned off on its own.
 | 5 | DroidDeck esync, built in | `bp-11.9-tier5` |
 | 6 | SD card fixes (games on `noexec` storage, drive-root copies) | `bp-11.9-tier6` |
 | 7 | Media fixes (DirectShow FMVs no longer upside down) | `bp-11.9-tier7` |
+| 8 | WoW Forever ARM64EC fixes | `patches/wow-tier8/*.patch` (applied at build time) |
 
 Wine source: [`The412Banner/proton-wine`](https://github.com/The412Banner/proton-wine), branch
 `banner-proton/11.9` (the `wine` submodule). Versions and pins: `banner-proton/VERSION` and `banner-proton/PINS`.

@@ -9,6 +9,8 @@ CACHYOS_WINE_COMMIT=2ce6b44caa66a56ec99c7826ae564c088abc1b9f
 WINE_REPO=https://github.com/The412Banner/proton-wine
 WINE_BRANCH=banner-proton/11.9
 WINE_TIER_TAGS="bp-11.9-tier1 bp-11.9-tier2 bp-11.9-tier3 bp-11.9-tier4 bp-11.9-tier5 bp-11.9-tier6 bp-11.9-tier7"
+# Tier 8: WoW Forever ARM64EC fixes as patches/wow-tier8/*.patch (applied by apply-wine-tier8.sh after prep.sh).
+WINE_TIER8_PATCHES=wow-tier8
 # Wine patches GE added after tier 2 was made, committed on top of the branch (tags, in order).
 # verify-tier2.sh expects a fresh run of GE's wine section to equal tier 2 plus these.
 # None on banner-proton/11.9: tier 2 was made from GE-Proton11-9 itself (11.7's follow-up em-fixups/0067 is in it).
