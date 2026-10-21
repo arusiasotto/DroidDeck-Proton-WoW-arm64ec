@@ -1,5 +1,5 @@
 diff --git a/dlls/ntdll/unix/virtual.c b/dlls/ntdll/unix/virtual.c
-index 7eb2e91..9304a24 100644
+index 7eb2e91..81ccc6e 100644
 --- a/dlls/ntdll/unix/virtual.c
 +++ b/dlls/ntdll/unix/virtual.c
 @@ -3296,6 +3296,180 @@ static IMAGE_BASE_RELOCATION *process_relocation_block( char *page, IMAGE_BASE_R
@@ -22,7 +22,7 @@ index 7eb2e91..9304a24 100644
 +    return TRUE;
 +}
 +
-+static ULONG_PTR map_image_find_ordinal_export( HMODULE module, const IMAGE_EXPORT_DIRECTORY *exports,
++static ULONG_PTR map_image_find_ordinal_export( char *module, const IMAGE_EXPORT_DIRECTORY *exports,
 +                                                DWORD ordinal )
 +{
 +    const DWORD *functions = (const DWORD *)((BYTE *)module + exports->AddressOfFunctions);
@@ -32,7 +32,7 @@ index 7eb2e91..9304a24 100644
 +    return (ULONG_PTR)module + functions[ordinal];
 +}
 +
-+static ULONG_PTR map_image_find_named_export( HMODULE module, const IMAGE_EXPORT_DIRECTORY *exports,
++static ULONG_PTR map_image_find_named_export( char *module, const IMAGE_EXPORT_DIRECTORY *exports,
 +                                              const char *name )
 +{
 +    const WORD *ordinals = (const WORD *)((BYTE *)module + exports->AddressOfNameOrdinals);
