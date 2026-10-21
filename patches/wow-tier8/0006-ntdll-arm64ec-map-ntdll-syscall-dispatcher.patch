@@ -1,8 +1,8 @@
 diff --git a/dlls/ntdll/unix/virtual.c b/dlls/ntdll/unix/virtual.c
-index 7eb2e91..667d057 100644
+index 7eb2e91..9304a24 100644
 --- a/dlls/ntdll/unix/virtual.c
 +++ b/dlls/ntdll/unix/virtual.c
-@@ -3296,6 +3296,179 @@ static IMAGE_BASE_RELOCATION *process_relocation_block( char *page, IMAGE_BASE_R
+@@ -3296,6 +3296,180 @@ static IMAGE_BASE_RELOCATION *process_relocation_block( char *page, IMAGE_BASE_R
      return (IMAGE_BASE_RELOCATION *)reloc;  /* return address of next block */
  }
  
@@ -48,6 +48,14 @@ index 7eb2e91..667d057 100644
 +        else min = pos + 1;
 +    }
 +    return 0;
++}
++
++static INT64 map_image_ldr_literal_offset( UINT32 insn )
++{
++    INT64 imm19 = (insn >> 5) & 0x7ffff;
++
++    if (imm19 & 0x40000) imm19 |= ~0x7ffffLL;
++    return imm19 << 2;
 +}
 +
 +static void map_image_pwrite_qword( struct file_view *view, void *addr, ULONG_PTR value )
@@ -99,26 +107,22 @@ index 7eb2e91..667d057 100644
 +        for (j = 0; code + j + 4 < end; j++)
 +        {
 +            UINT32 *insn = code + j;
-+            INT64 imm;
-+            ULONG_PTR literal, *cell;
++            ULONG_PTR literal, cell;
 +
 +            if (insn[1] != mov_x9_x30) continue;
 +            if ((insn[0] & 0xff000000) != 0xd2000000) continue; /* mov x8, #imm */
 +            if ((insn[2] & 0xff000000) != 0x58000000) continue; /* ldr x16, label */
-+            if ((insn[3] & 0xffc003ff) != 0xf9400200) continue; /* ldr x16, [x16] */
-+            if (((insn[3] >> 5) & 0x1f) != 16 || (insn[3] & 0x1f) != 16) continue;
++            if (insn[3] != 0xf9400210) continue; /* ldr x16, [x16] */
 +
-+            imm = (INT32)((insn[2] & 0x00ffffe0) << (32 - 21)) >> (32 - 21 - 2);
-+            literal = (ULONG_PTR)(insn + 2) + imm;
++            literal = (ULONG_PTR)(insn + 2) + map_image_ldr_literal_offset( insn[2] );
 +            if (literal + sizeof(ULONG_PTR) > (ULONG_PTR)base + total_size) continue;
 +
-+            cell = *(ULONG_PTR **)literal;
-+            if (!cell || (ULONG_PTR)cell < (ULONG_PTR)base || (ULONG_PTR)cell + sizeof(ULONG_PTR) > (ULONG_PTR)base + total_size)
-+                continue;
++            cell = *(ULONG_PTR *)literal;
++            if (!cell) continue;
 +            if (*(ULONG_PTR *)cell == dispatcher) continue;
 +
-+            map_image_pwrite_qword( view, cell, dispatcher );
-+            TRACE_(module)( "patched ntdll dispatcher cell %p in mapped view %p\n", cell, base );
++            map_image_pwrite_qword( view, (void *)cell, dispatcher );
++            TRACE_(module)( "patched ntdll dispatcher cell %p in mapped view %p\n", (void *)cell, base );
 +        }
 +    }
 +}
@@ -132,7 +136,6 @@ index 7eb2e91..667d057 100644
 +    ULONG_PTR export_addr, dispatcher = (ULONG_PTR)__wine_syscall_dispatcher;
 +
 +    if (!is_ntdll_image_name( nt_name )) return;
-+    if (nt->FileHeader.Machine != IMAGE_FILE_MACHINE_ARM64) return;
 +    if (!dispatcher) return;
 +
 +    dir = get_data_dir( nt, total_size, IMAGE_DIRECTORY_ENTRY_EXPORT );
@@ -140,17 +143,15 @@ index 7eb2e91..667d057 100644
 +    exports = (const IMAGE_EXPORT_DIRECTORY *)(base + dir->VirtualAddress);
 +
 +    export_addr = map_image_find_named_export( base, exports, "__wine_syscall_dispatcher" );
-+    if (export_addr)
++    if (!export_addr) return;
++
++    slot = (void **)export_addr;
++    if ((ULONG_PTR)*slot != dispatcher)
 +    {
-+        slot = (void **)export_addr;
-+        if ((ULONG_PTR)*slot != dispatcher)
-+        {
-+            map_image_pwrite_qword( view, slot, dispatcher );
-+            TRACE_(module)( "initialized %s __wine_syscall_dispatcher at %p -> %p\n",
-+                            debugstr_us(nt_name), slot, (void *)dispatcher );
-+        }
++        map_image_pwrite_qword( view, slot, dispatcher );
++        TRACE_(module)( "initialized %s __wine_syscall_dispatcher at %p -> %p\n",
++                        debugstr_us(nt_name), slot, (void *)dispatcher );
 +    }
-+    else WARN_(module)( "%s has no __wine_syscall_dispatcher export; scanning stubs\n", debugstr_us(nt_name) );
 +
 +    export_addr = map_image_find_named_export( base, exports, "__wine_unix_call_dispatcher" );
 +    if (export_addr)
@@ -182,7 +183,7 @@ index 7eb2e91..667d057 100644
  
  /***********************************************************************
   *           map_image_into_view
-@@ -3535,6 +3708,10 @@ static NTSTATUS map_image_into_view( struct file_view *view, const UNICODE_STRIN
+@@ -3535,6 +3709,10 @@ static NTSTATUS map_image_into_view( struct file_view *view, const UNICODE_STRIN
                   sec[i].Characteristics, debugstr_us(nt_name), sec[i].Name );
      }
  
