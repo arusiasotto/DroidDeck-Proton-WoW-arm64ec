@@ -1,36 +1,37 @@
 diff --git a/include/wine/asm.h b/include/wine/asm.h
-index 172d7c8..c2cf260 100644
+index 172d7c8..c37fa6a 100644
 --- a/include/wine/asm.h
 +++ b/include/wine/asm.h
-@@ -249,7 +249,14 @@
+@@ -249,21 +249,26 @@
                         ".seh_endprologue\n\t" \
                         "mov x8, #(" #id ")\n\t" \
                         "mov x9, x30\n\t" \
 -                       "ldr x16, 1f\n\t" \
-+                       "ldr x17, [x18, #0x1788]\n\t" \
-+                       "cbz x17, 2f\n\t" \
+-                       "ldr x16, [x16]\n\t" \
 +                       "ldr x16, [x18, #0x370]\n\t" \
++                       "cbz x16, 1f\n\t" \
 +                       "ldr x16, [x16, #8]\n\t" \
-+                       "cbz x16, 2f\n\t" \
-+                       "blr x16\n\t" \
-+                       "ret\n\t" \
-+                       "2:\tldr x16, 1f\n\t" \
-                        "ldr x16, [x16]\n\t" \
++                       "cbz x16, 1f\n\t" \
                         "blr x16\n\t" \
-                        "ret\n" \
-@@ -260,7 +267,14 @@
+-                       "ret\n" \
+-                       "1:\t.quad " __ASM_NAME("__wine_syscall_dispatcher") )
++                       "ret\n\t" \
++                       "1:\tbrk #0\n" )
+ #elif defined __arm64ec__
+ # define __ASM_SYSCALL_FUNC(id,name) \
+     asm( ".seh_proc \"#" #name "$hp_target\"\n\t" \
           ".seh_endprologue\n\t" \
           "mov x8, #%0\n\t" \
           "mov x9, x30\n\t" \
 -         "adrp x16, __wine_syscall_dispatcher\n\t" \
-+         "ldr x17, [x18, #0x1788]\n\t" \
-+         "cbz x17, 1f\n\t" \
+-         "ldr x16, [x16, :lo12:__wine_syscall_dispatcher]\n\t" \
 +         "ldr x16, [x18, #0x370]\n\t" \
++         "cbz x16, 1f\n\t" \
 +         "ldr x16, [x16, #8]\n\t" \
 +         "cbz x16, 1f\n\t" \
-+         "blr x16\n\t" \
-+         "ret\n\t" \
-+         "1:\tadrp x16, __wine_syscall_dispatcher\n\t" \
-          "ldr x16, [x16, :lo12:__wine_syscall_dispatcher]\n\t" \
           "blr x16\n\t" \
           "ret\n\t" \
++         "1:\tbrk #0\n\t" \
+          ".seh_endproc" :: "i" (id) )
+ #elif defined __arm64ec_x64__
+ # define __ASM_SYSCALL_FUNC(id,name) \

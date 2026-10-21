@@ -4,20 +4,22 @@ Patches applied on top of the pinned `wine` submodule (`bp-11.9-tier7`) at build
 See `banner-proton/apply-wine-tier8.sh` and `banner-proton/PINS`.
 
 **Target client:** `WowB-ARM64.exe` (WoW Forever) is an **ARM64EC** application, not a plain
-ARM64 image. On Wine aarch64, EC threads get `TEB->ChpeV2CpuAreaInfo` at **+0x1788**
-(`is_arm64ec()` in `dlls/ntdll/unix/thread.c`). Patches **0002** and **0003** rely on that:
-EC threads take the TEB → `KeServiceDescriptorTable[0].CounterTable` dispatch path when WoW
-maps a clean `ntdll.dll` whose PE `.data` dispatcher slot was never filled. Non-EC fallbacks
-use Wine's existing `__wine_syscall_dispatcher` PE extern (filled at load), not a separate slot.
+ARM64 image. Nt syscall thunks are emitted from **`include/wine/asm.h`** (via winebuild from
+`ntdll.spec`), not `tools/make_requests` (wineserver protocol only). Patch **0002** matches the
+verified LD_PRELOAD stub rewrite: unconditional TEB `syscall_table` at **+0x370**, dispatch via
+`KeServiceDescriptorTable[0].CounterTable` at **+8**; **`brk #0`** if either pointer is null (no
+silent fallthrough to an empty PE `.data` slot). **0003** / **0005** / **0006** publish and refresh
+that dispatch target and fill manually mapped `ntdll.dll` views.
 
 Apply in numeric order:
 
 | Patch | Issue |
 |-------|--------|
 | `0001-…` | Uninitialized ARM64 `CONTEXT` debug registers in `setup_exception` |
-| `0002-…` | ARM64/ARM64EC syscall stubs: TEB `KeServiceDescriptorTable[0].CounterTable` dispatch when `ChpeV2CpuAreaInfo` is set; fallback `__wine_syscall_dispatcher` (`include/wine/asm.h`) |
+| `0002-…` | ARM64/ARM64EC syscall stubs: unconditional TEB → KSDT `CounterTable` dispatch; `brk #0` on null (`include/wine/asm.h`) |
 | `0003-…` | Publish `__wine_syscall_dispatcher` in `KeServiceDescriptorTable[0].CounterTable` on aarch64 |
-| `0004-…` | ARM64EC-only NLS fallback via `read_nls_file` + `NtAllocateVirtualMemory` (`env.c`) |
+| `0004-…` | NLS map-fail fallback via `read_nls_file` + `NtAllocateVirtualMemory` (`env.c`; plain ARM64 + ARM64EC) |
 | `0005-…` | `ntdll_arm64ec_sync_syscall_dispatch()` refreshes KSDT `CounterTable` and per-thread `syscall_table` on EC thread start and after `ChpeV2` setup (`syscall.c`, `thread.c`) |
+| `0006-…` | Map-time init of `__wine_syscall_dispatcher` (and unix-call exports) for manually mapped `ntdll.dll` views (`unix/virtual.c` `map_image_into_view`) |
 
 Do not commit these changes inside the `wine` submodule; only the `.patch` files here.
