@@ -1,8 +1,14 @@
-# DroidDeck-Proton
+# DroidDeck-Proton (WoW Forever / ARM64EC tier 8)
 
 A GE-Proton based Proton build for **ARM64 (aarch64) Linux**, made for
 [DroidDeck](https://github.com/Droid-Deck/DroidDeck): Valve's Steam client in an Arch Linux ARM rootfs,
 running Windows games through ARM64 Proton with FEX.
+
+> [!Warning]
+> This fork is the **WoW Forever** build. Every user-visible name includes **WoW** so it does not
+> collide with stock **DroidDeck-Proton 11-9.1** or DroidDeck's generic **ARM64EC** tool when the app
+> updates Proton. Install only **`DroidDeck-Proton 11-9.1 ARM64EC WoW`** from releases tagged
+> **`DroidDeck-Proton-11-9.1-arm64ec-wow`**.
 
 > [!Important]
 > DroidDeck-Proton is an unofficial build. It is **not** GE-Proton, Proton-CachyOS or Valve's Proton and is
@@ -10,9 +16,10 @@ running Windows games through ARM64 Proton with FEX.
 
 ## Install
 
-1. Download `DroidDeck-Proton-<version>-aarch64.tar.gz` from [Releases](../../releases).
-2. Extract it into Steam's `compatibilitytools.d` folder.
-3. Restart Steam and pick **DroidDeck-Proton &lt;version&gt;** as the game's compatibility tool.
+1. Download `DroidDeck-Proton-11-9.1-arm64ec-wow-aarch64.tar.gz` from [Releases](../../releases)
+   (release tag **`DroidDeck-Proton-11-9.1-arm64ec-wow`**).
+2. Extract it into Steam's `compatibilitytools.d` folder (creates folder **`DroidDeck-Proton 11-9.1 ARM64EC WoW`**).
+3. Restart Steam and pick **`DroidDeck-Proton 11-9.1 ARM64EC WoW`** as the game's compatibility tool.
 
 ## What's inside
 
@@ -37,7 +44,7 @@ Wine source: [`The412Banner/proton-wine`](https://github.com/The412Banner/proton
 _Formerly Banner-Proton; releases up to 11-7.2 used the old name._
 
 <details>
-<summary><b>Pins (11-9.1-arm64ec)</b></summary>
+<summary><b>Pins (11-9.1-arm64ec-wow)</b></summary>
 
 | Component | Commit |
 |---|---|
@@ -198,7 +205,8 @@ aarch64 builds.
 
 Local builds: follow [docs/README.GE-Proton.md](docs/README.GE-Proton.md), using `banner-proton/prep.sh`
 and `banner-proton/apply-wine-tier8.sh` instead of `patches/protonprep-valve-staging.sh` and
-`../configure.sh --target-arch=arm64 --build-name=DroidDeck-Proton-<version>-arm64ec --display-name="DroidDeck-Proton <base> ARM64EC"`.
+`../configure.sh --target-arch=arm64 --build-name=DroidDeck-Proton-<version> --display-name="DroidDeck-Proton <base> ARM64EC WoW"`
+(with `<version>` from `banner-proton/VERSION`, e.g. `11-9.1-arm64ec-wow`).
 
 </details>
 

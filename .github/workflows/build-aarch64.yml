@@ -42,6 +42,7 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
       build_name: ${{ steps.v.outputs.build_name }}
+      internal_name: ${{ steps.v.outputs.internal_name }}
       display_name: ${{ steps.v.outputs.display_name }}
       keys: ${{ steps.k.outputs.keys }}
       graphics_hit: ${{ steps.graphics.outputs.cache-hit }}
@@ -54,11 +55,18 @@ jobs:
       - id: v
         run: |
           v=$(tr -d '[:space:]' < banner-proton/VERSION)
-          base="${v%-arm64ec}"
+          wow_suffix="-arm64ec-wow"
+          if [[ "$v" != *"$wow_suffix" ]]; then
+            echo "banner-proton/VERSION must end with $wow_suffix (got: $v)" >&2
+            exit 1
+          fi
+          base="${v%$wow_suffix}"
+          internal="DroidDeck-Proton-$v"
           echo "version=$v" >> "$GITHUB_OUTPUT"
-          echo "build_name=DroidDeck-Proton-$v-aarch64" >> "$GITHUB_OUTPUT"
+          echo "build_name=$internal-aarch64" >> "$GITHUB_OUTPUT"
+          echo "internal_name=$internal" >> "$GITHUB_OUTPUT"
           echo "display_name=DroidDeck-Proton $base ARM64EC WoW" >> "$GITHUB_OUTPUT"
-          echo "Building DroidDeck-Proton $base ARM64EC WoW ($v) from $GITHUB_SHA"
+          echo "Building $internal ($v) display=\"DroidDeck-Proton $base ARM64EC WoW\" from $GITHUB_SHA"
       - id: k
         run: |
           keys=$(banner-proton/ci.sh keys)
@@ -314,8 +322,14 @@ jobs:
           [ -n "$(find x -name sharedgpures.sys)" ] || fail=1
           cat "$T/version"
           grep -Eqx "[0-9]+ ${NAME%-aarch64}" "$T/version" || { echo "bad version file"; fail=1; }
-          grep -F "\"${NAME%-aarch64}\"" "$T/compatibilitytool.vdf" || { echo "compatibilitytool.vdf: internal name is not ${NAME%-aarch64}"; fail=1; }
+          internal="${{ needs.meta.outputs.internal_name }}"
+          grep -F "\"$internal\"" "$T/compatibilitytool.vdf" || { echo "compatibilitytool.vdf: internal name is not $internal"; fail=1; }
           grep -F "\"display_name\" \"${{ needs.meta.outputs.display_name }}\"" "$T/compatibilitytool.vdf" || { echo "compatibilitytool.vdf: wrong display_name"; fail=1; }
+          case "$internal" in *-wow) ;; *) echo "internal name must include -wow suffix: $internal"; fail=1 ;; esac
+          if grep -F '"DroidDeck-Proton-11-9.1-arm64ec"' "$T/compatibilitytool.vdf"; then
+            echo "compatibilitytool.vdf still uses stock ARM64EC internal id (no WoW)"
+            fail=1
+          fi
           # The old name must not survive anywhere a user or a tool reads it.
           for n in "$NAME.tar.gz" "$(ls new)" "${T#x/}"; do
             case "$n" in *Banner-Proton*) echo "old name in \"$n\""; fail=1 ;; esac
@@ -359,6 +373,8 @@ jobs:
           wine = subprocess.run(['git', 'ls-tree', 'HEAD', 'wine'], capture_output=True, text=True).stdout.split()[2]
           info = {
             "name": name,
+            "display_name": "${{ needs.meta.outputs.display_name }}",
+            "internal_name": "${{ needs.meta.outputs.internal_name }}",
             "version": open('banner-proton/VERSION').read().strip(),
             "banner_proton_commit": os.environ["GITHUB_SHA"],
             "proton_wine_repo": pins.get("WINE_REPO"), "proton_wine_branch": pins.get("WINE_BRANCH"), "proton_wine_commit": wine,
@@ -425,9 +441,15 @@ jobs:
           . ../banner-proton/PINS
           notes=$(mktemp)
           {
+            echo "**WoW Forever** tier-8 build — not stock DroidDeck-Proton or generic ARM64EC."
+            echo
             echo "DroidDeck-Proton ${{ needs.meta.outputs.version }} for ARM64 (aarch64) Linux."
             echo
-            echo "Install: extract into \`compatibilitytools.d\` and pick \"DroidDeck-Proton ${{ needs.meta.outputs.version }}\" in Steam."
+            echo "Install: extract the tarball into Steam \`compatibilitytools.d\`. Folder and Steam label:"
+            echo
+            echo "> **${{ needs.meta.outputs.display_name }}**"
+            echo
+            echo "Internal compat id: \`${{ needs.meta.outputs.internal_name }}\` (won't collide with DroidDeck's \`DroidDeck-Proton 11-9.1\` / \`… ARM64EC\` updates)."
             echo
             echo "| Pin | Value |"
             echo "|---|---|"
@@ -452,8 +474,8 @@ jobs:
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$NAME.tar.gz" "$NAME.sha512sum" "$NAME.build-info.json" --clobber
-            gh release edit "$TAG" --notes-file "$notes" $kind
+            gh release edit "$TAG" --notes-file "$notes" --title "${{ needs.meta.outputs.display_name }}" $kind
           else
             gh release create "$TAG" "$NAME.tar.gz" "$NAME.sha512sum" "$NAME.build-info.json" \
-              --target "$GITHUB_SHA" $kind --title "DroidDeck-Proton ${{ needs.meta.outputs.version }}" --notes-file "$notes"
+              --target "$GITHUB_SHA" $kind --title "${{ needs.meta.outputs.display_name }}" --notes-file "$notes"
           fi
