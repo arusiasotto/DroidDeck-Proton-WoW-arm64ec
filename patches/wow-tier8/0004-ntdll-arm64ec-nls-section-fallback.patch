@@ -1,5 +1,5 @@
 diff --git a/dlls/ntdll/unix/env.c b/dlls/ntdll/unix/env.c
-index 104b1eb..7f7f6bf 100644
+index 104b1eb..75b91fb 100644
 --- a/dlls/ntdll/unix/env.c
 +++ b/dlls/ntdll/unix/env.c
 @@ -2227,6 +2227,97 @@ void *create_startup_info( const UNICODE_STRING *nt_image, ULONG process_flags,
@@ -104,7 +104,7 @@ index 104b1eb..7f7f6bf 100644
          status = map_section( handle, ptr, size, PAGE_READONLY );
          NtClose( handle );
      }
-+    if (status && is_arm64ec())
++    if (status)
 +        status = arm64ec_nls_section_fallback( type, id, ptr, size );
      return status;
  }
@@ -122,7 +122,7 @@ index 104b1eb..7f7f6bf 100644
          NtClose( handle );
      }
 -    *lcid = system_lcid;
-+    if (status && is_arm64ec())
++    if (status)
 +    {
 +        status = map_nls_file_as_view( "locale.nls", ptr, &mapsize );
 +        if (!status) *lcid = 0x0409;
