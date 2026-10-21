@@ -1,27 +1,8 @@
-diff --git a/dlls/ntdll/signal_arm64.c b/dlls/ntdll/signal_arm64.c
-index 80a9466..7c7c9f1 100644
---- a/dlls/ntdll/signal_arm64.c
-+++ b/dlls/ntdll/signal_arm64.c
-@@ -48,6 +48,14 @@ WINE_DECLARE_DEBUG_CHANNEL(relay);
- ALL_SYSCALLS
- #undef SYSCALL_ENTRY
- 
-+__ASM_BLOCK_BEGIN(__LINE__)
-+asm( ".data\n\t"
-+     ".balign 8\n\t"
-+     __ASM_GLOBL(__ASM_NAME("__wine_syscall_dispatcher_slot")) "\n\t"
-+     ".quad 0\n\t"
-+     ".text" );
-+__ASM_BLOCK_END
-+
- 
- /**************************************************************************
-  *		__chkstk (NTDLL.@)
 diff --git a/dlls/ntdll/unix/syscall.c b/dlls/ntdll/unix/syscall.c
-index 413f5f8..95856bc 100644
+index 413f5f8..b8e4a21 100644
 --- a/dlls/ntdll/unix/syscall.c
 +++ b/dlls/ntdll/unix/syscall.c
-@@ -246,6 +246,15 @@ static BYTE syscall_args[ARRAY_SIZE(syscalls)] =
+@@ -246,6 +246,14 @@ static BYTE syscall_args[ARRAY_SIZE(syscalls)] =
  
  #ifdef __aarch64__
  extern void __wine_syscall_dispatcher(void);
@@ -30,7 +11,6 @@ index 413f5f8..95856bc 100644
 +{
 +    struct ntdll_thread_data *thread_data = (struct ntdll_thread_data *)&teb->GdiTebBatch;
 +
-+    __wine_syscall_dispatcher_slot = (ULONG_PTR)__wine_syscall_dispatcher;
 +    KeServiceDescriptorTable[0].CounterTable = (ULONG_PTR *)__wine_syscall_dispatcher;
 +    thread_data->syscall_table = KeServiceDescriptorTable;
 +}
@@ -61,14 +41,13 @@ index 8e50709..42d6264 100644
  #endif
  
 diff --git a/dlls/ntdll/unix/unix_private.h b/dlls/ntdll/unix/unix_private.h
-index 7cd3aa4..66bd2c5 100644
+index 7cd3aa4..5a1b2c3 100644
 --- a/dlls/ntdll/unix/unix_private.h
 +++ b/dlls/ntdll/unix/unix_private.h
-@@ -357,6 +357,10 @@ extern void DECLSPEC_NORETURN signal_start_thread( PRTL_THREAD_START_ROUTINE ent
+@@ -357,6 +357,9 @@ extern void DECLSPEC_NORETURN signal_start_thread( PRTL_THREAD_START_ROUTINE ent
                                                     BOOL suspend, TEB *teb );
  extern SYSTEM_SERVICE_TABLE KeServiceDescriptorTable[4];
 +#ifdef __aarch64__
-+extern ULONG_PTR __wine_syscall_dispatcher_slot;
 +void ntdll_arm64ec_sync_syscall_dispatch( TEB *teb );
 +#endif
  extern void __wine_syscall_dispatcher(void);

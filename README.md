@@ -169,10 +169,10 @@ launch-arguments field (e.g. `-d3d11`) — no extra launcher scripts required fo
 | Patch | What it fixes |
 |---|---|
 | `0001` | Zero the stack `CONTEXT` in `setup_exception` before `save_context` (stale debug-register bits → intermittent **Game Initialization Failed: I**) |
-| `0002` | ARM64 syscall stubs: if `TEB->ChpeV2CpuAreaInfo` is set, dispatch via `KeServiceDescriptorTable[0].CounterTable`; otherwise load `__wine_syscall_dispatcher` through `__wine_syscall_dispatcher_slot` (`include/wine/asm.h`) |
+| `0002` | ARM64 syscall stubs: if `TEB->ChpeV2CpuAreaInfo` is set, dispatch via `KeServiceDescriptorTable[0].CounterTable`; otherwise use Wine's `__wine_syscall_dispatcher` PE extern (`include/wine/asm.h`) |
 | `0003` | Publish `__wine_syscall_dispatcher` in `KeServiceDescriptorTable[0].CounterTable` on aarch64 (`dlls/ntdll/unix/syscall.c`) |
 | `0004` | On section-map failure **and** `is_arm64ec()` only: load NLS files into `PAGE_READONLY` VM (`locale.nls` / `l_intl.nls` / codepage fallbacks in `dlls/ntdll/unix/env.c`) |
-| `0005` | Sync `__wine_syscall_dispatcher_slot`, KSDT `CounterTable`, and per-thread `syscall_table` on EC thread start and after `ChpeV2CpuAreaInfo` setup (fixes `EXCEPTION_ILLEGAL_INSTRUCTION` storms when the game’s `ntdll` never fills Wine’s dispatcher slot) |
+| `0005` | On EC threads, refresh KSDT `CounterTable` and per-thread `syscall_table` after `ChpeV2` setup (`ntdll_arm64ec_sync_syscall_dispatch` in `syscall.c` / `thread.c`) |
 
 CI applies tier 8 in [`.github/workflows/_group.yml`](.github/workflows/_group.yml) and checks the
 expected source markers in the **Wine protocol** job of [`build-aarch64.yml`](.github/workflows/build-aarch64.yml).
