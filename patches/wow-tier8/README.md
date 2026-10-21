@@ -19,6 +19,7 @@ Apply in numeric order:
 | `0003-…` | Publish `__wine_syscall_dispatcher` in `KeServiceDescriptorTable[0].CounterTable` on aarch64 |
 | `0004-…` | ARM64EC-only NLS fallback via `read_nls_file` + `NtAllocateVirtualMemory` (`env.c`) |
 | `0005-…` | PE `.data` `__wine_syscall_dispatcher_slot` (`signal_arm64.c`) plus `ntdll_arm64ec_sync_syscall_dispatch()` so EC threads refresh KSDT/TEB syscall tables after `ChpeV2` setup (`syscall.c`, `thread.c`) |
+| `0006-…` | Same slot symbol in unix `signal_arm64.c` so `ntdll.so` links and sync can write the dispatcher pointer |
 
 Patch **0002** loads the non-TEB fallback via `__wine_syscall_dispatcher_slot` (not the PE `.data` slot),
 which stays empty when WoW maps its own `ntdll.dll`.
