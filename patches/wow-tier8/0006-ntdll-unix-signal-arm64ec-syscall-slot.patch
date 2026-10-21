@@ -1,0 +1,16 @@
+diff --git a/dlls/ntdll/unix/signal_arm64.c b/dlls/ntdll/unix/signal_arm64.c
+index 3d059bb..1835264 100644
+--- a/dlls/ntdll/unix/signal_arm64.c
++++ b/dlls/ntdll/unix/signal_arm64.c
+@@ -1943,4 +1943,12 @@ __ASM_GLOBAL_POINTER( __ASM_NAME("__wine_unix_call_dispatcher_user_stack"),
+                       __ASM_LOCAL_LABEL("__wine_unix_call_dispatcher_user_stack") )
+ 
++__ASM_BLOCK_BEGIN(__LINE__)
++asm( ".data\n\t"
++     ".balign 8\n\t"
++     __ASM_GLOBL(__ASM_NAME("__wine_syscall_dispatcher_slot")) "\n\t"
++     ".quad 0\n\t"
++     ".text" );
++__ASM_BLOCK_END
++
+ #endif  /* __aarch64__ */

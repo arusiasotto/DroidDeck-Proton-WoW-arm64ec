@@ -1,5 +1,5 @@
 diff --git a/dlls/ntdll/signal_arm64.c b/dlls/ntdll/signal_arm64.c
-index 80a9466..a1c3d4e 100644
+index 80a9466..7c7c9f1 100644
 --- a/dlls/ntdll/signal_arm64.c
 +++ b/dlls/ntdll/signal_arm64.c
 @@ -48,6 +48,14 @@ WINE_DECLARE_DEBUG_CHANNEL(relay);
@@ -18,7 +18,7 @@ index 80a9466..a1c3d4e 100644
  /**************************************************************************
   *		__chkstk (NTDLL.@)
 diff --git a/dlls/ntdll/unix/syscall.c b/dlls/ntdll/unix/syscall.c
-index 413f5f8..e530843 100644
+index 413f5f8..95856bc 100644
 --- a/dlls/ntdll/unix/syscall.c
 +++ b/dlls/ntdll/unix/syscall.c
 @@ -246,6 +246,15 @@ static BYTE syscall_args[ARRAY_SIZE(syscalls)] =
