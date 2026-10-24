@@ -219,7 +219,7 @@ aarch64 builds.
 - **CI guards** – Wine protocol and ntdll exports unchanged; tier 6 fixes and the winedmo row order fix present in source and
   binaries (trace strings); WoW Forever deferred game patch markers after `apply-deferred-game-patches.sh`; no leftover "Banner-Proton" names.
 
-**Pre-ship test (recommended before merging upstream):** on this fork, run **Actions → Build DroidDeck-Proton
+**Pre-ship test (recommended before installing on device):** on this fork, run **Actions → Build DroidDeck-Proton
 (aarch64) → Run workflow** on branch **`wine-tier8-upstream`**, set **prerelease** on and **publish** off, then
 install the artifact tarball on the phone. CI applies `prep.sh` then `apply-deferred-game-patches.sh` inside the
 arm64 Steam RT job (same order as a release build).
