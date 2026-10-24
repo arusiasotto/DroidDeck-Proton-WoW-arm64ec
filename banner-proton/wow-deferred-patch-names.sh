@@ -10,5 +10,5 @@ if [[ "$patch_set" == "full" ]]; then
 fi
 
 slug=$(echo "$patch_set" | tr '_' '-')
-echo "VERSION_SUFFIX=-test-${slug}"
-echo "DISPLAY_TEST=test ${slug}"
+printf 'VERSION_SUFFIX=-test-%s\n' "$slug"
+printf 'DISPLAY_TEST=%q\n' "test $slug"
