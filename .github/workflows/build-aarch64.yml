@@ -356,7 +356,7 @@ jobs:
           internal="${{ needs.meta.outputs.internal_name }}"
           grep -F "\"$internal\"" "$T/compatibilitytool.vdf" || { echo "compatibilitytool.vdf: internal name is not $internal"; fail=1; }
           grep -F "\"display_name\" \"${{ needs.meta.outputs.display_name }}\"" "$T/compatibilitytool.vdf" || { echo "compatibilitytool.vdf: wrong display_name"; fail=1; }
-          case "$internal" in *-wow) ;; *) echo "internal name must include -wow suffix: $internal"; fail=1 ;; esac
+          case "$internal" in *-arm64ec-wow|*-arm64ec-wow-test-*) ;; *) echo "internal name must include -arm64ec-wow (or -arm64ec-wow-test-*): $internal"; fail=1 ;; esac
           # The old name must not survive anywhere a user or a tool reads it.
           for n in "$NAME.tar.gz" "$(ls new)" "${T#x/}"; do
             case "$n" in *Banner-Proton*) echo "old name in \"$n\""; fail=1 ;; esac
