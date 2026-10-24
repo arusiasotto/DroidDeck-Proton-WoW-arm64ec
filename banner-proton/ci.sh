@@ -39,8 +39,8 @@ keys() {
         ffmpeg OpenXR-SDK piper openfst kaldi vosk-api vklayers/build-steam-overlay-wayland.mk)
     misc=$(key fonts protonfixes)
     # wine links against the media group, so its key includes the media key.
-    wine=$( { echo "$media"; key wine Vulkan-Headers SPIRV-Headers vkd3d lsteamclient steam_helper vrclient_x64 \
-        umu_helper openvr discord-rpc-bridge; } | sha256sum | cut -c1-20)
+    wine=$( { echo "$media"; echo "${WOW_DEFERRED_PATCH_SET:-full}"; key wine Vulkan-Headers SPIRV-Headers vkd3d lsteamclient steam_helper vrclient_x64 \
+        umu_helper openvr discord-rpc-bridge patches/game-patches; } | sha256sum | cut -c1-20)
     printf '{"graphics":"grp-graphics-%s","fex":"grp-fex-%s","media":"grp-media-%s","misc":"grp-misc-%s","wine":"grp-wine-%s"}\n' \
         "$graphics" "$fex" "$media" "$misc" "$wine"
 }

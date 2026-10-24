@@ -64,6 +64,11 @@ on:
       display_name:
         required: true
         type: string
+      wow_patch_set:
+        description: "WOW_DEFERRED_PATCH_SET (full = production WoW patch)"
+        required: false
+        type: string
+        default: full
     outputs:
       done:
         description: "true when the group's make finished in this job"
@@ -133,7 +138,8 @@ jobs:
       - name: Prepare sources (GE protonprep without its wine section)
         run: |
           banner-proton/prep.sh
-          banner-proton/apply-deferred-game-patches.sh
+          WOW_DEFERRED_PATCH_SET="${{ inputs.wow_patch_set }}" banner-proton/apply-deferred-game-patches.sh
+          echo "WOW_DEFERRED_PATCH_SET=${{ inputs.wow_patch_set }}"
           # Build without debug info. GE's x86_64 CI uses .github/patches/0001-build-strip-binaries-early.patch
           # (-s in CFLAGS), but with the clang-based arm64 SDK "-s" is an unused argument in meson's
           # compile checks (-Werror=unused-command-line-argument) and breaks e.g. dav1d's atomics test.

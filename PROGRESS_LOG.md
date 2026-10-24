@@ -2,6 +2,53 @@
 
 Newest first. Device = AYANEO Pocket FIT-class Android handheld running DroidDeck (glibc Arch ARM rootfs + Valve's Steam client).
 
+## 2026-10-23 (4) — PR blocker: 11-11.1 + WoW patch (device bisect done)
+
+### Goal
+Upstream PR needs **DroidDeck-Proton 11-11.1** + deferred [`wow-forever-arm64ec-ntdll.patch`](patches/game-patches/wow-forever-arm64ec-ntdll.patch) with **Battle.net + Classic** on one prefix (`4153382437`).
+
+### Device matrix (NX809J, same prefix)
+| Proton | Battle.net | Classic Era (`WowClassic-arm64.exe`) |
+|--------|------------|--------------------------------------|
+| Org **11-11.1** (no patch) | **OK** (captured) | **Fail** — DX11 OK in `gx.log`, then hang; no new `Client.log` |
+| **11-11.1-arm64ec-wow** | **Fail** — CEF/UI stall after GameController init | — |
+| **11-9.1-arm64ec-wow** | **OK** | **OK** — in-world ~21:30 |
+
+### Interpretation
+- **Bnet on 11-11.1 + patch** is not a bare GE 11-11 regression (stock 11-11.1 Bnet works). Focus on **patch hunks** interacting with **i386 CEF** (`virtual_setup_exception` seen once) and/or **global KSDT** changes.
+- **Classic on stock 11-11.1** implicates **tier-2 wine** (or DXVK/wined3d stack) vs 11-9.1 even **without** the WoW patch — separate bisect from Bnet patch work.
+- Clients are **PE ARM64 (`0xAA64`)**, `.build.info` **Windows arm64** — not COFF ARM64EC (`0xA641`). “ARM64EC” in Proton naming is the **Wine stack**, not the exe machine type.
+
+### Engineering next (fork)
+1. CI/device builds with [`WOW_DEFERRED_PATCH_SET`](patches/game-patches/README-bisect.md) (`bisect-no-virtual`, `bisect-no-dispatch`, …).
+2. Fix forward: gate **`map_image_init_ntdll_dispatchers`** to ARM64/EC views only; avoid poisoning **i386** paths; revisit **`KeServiceDescriptorTable[0].CounterTable`** global write.
+3. If Classic still fails on **fixed full patch**, bisect **bp-11.10-tier2** vs **bp-11.11-tier2** on stock (no patch).
+
+## 2026-10-23 (3) — WoW fork `11-11.1-arm64ec-wow` on NX809J
+
+### Symptom
+- **Battle.net** via **Steam** + **DroidDeck-Proton 11-11.1 ARM64EC WoW**: UI appears hung (spinner/blank) after ~2 min; Agent + CEF processes stay alive.
+- **WoW Classic** on **11-9.1 ARM64EC WoW** (non-Steam / inherited Agent): ran in-world; DXVK OK.
+- **Stock org `DroidDeck-Proton 11-11.1`** (no deferred WoW patch): not A/B tested on this device yet.
+
+### Confirmed on device (2026-10-23 evening)
+- Steam session **21:28** registers **`DroidDeck-Proton-11-11.1-arm64ec-wow`**; launch wrapper points at **`…/DroidDeck-Proton 11-11.1 ARM64EC WoW/`** (`wineserver` path matches).
+- Battle.net **`battle.net-20261024T013932*.log`**: backend reaches **GameController initialization complete**, friends initialized, WoW Classic Era account selected; **no further lines** after ~01:39:57 (CEF/Phoenix UI stall suspected).
+- **`session.log`**: one **`err:virtual:virtual_setup_exception nested exception on signal stack`** at Battle.net child spawn (Wine **`virtual.c`** → **`abort_thread(1)`** path). Harmless if isolated vs root cause — TBD.
+- **`ntdll.so`**: 11-9.1 `9f349801…` vs 11-11.1 `df9bf9b3…`; both ship WoW-tier strings (`map_nls_file_as_view`, `ntdll_arm64ec_sync_syscall_dispatch`). Delta is **GE 11-11 tier-2 base** + **deferred** [`wow-forever-arm64ec-ntdll.patch`](patches/game-patches/wow-forever-arm64ec-ntdll.patch), not “patch present vs absent” alone.
+- Battle.net binaries are **PE32 i386** (`Battle.net.exe`); WoW Forever / Classic ARM64 paths exercise different Wine stacks.
+
+### Bisection plan (in order)
+1. **Org 11-11.1 without WoW patch** — install **`DroidDeck-Proton 11-11.1`** from Droid-Deck org release; same **`4153382437`** prefix; Steam-launch Battle.net.  
+   - Works → focus on deferred game patch / ARM64EC dispatch interaction with i386 CEF.  
+   - Fails → GE **11-11** wine regression (tier-2 diff vs 11-9); bisect GE tier-2 commits or test **11-10.1**.
+2. **CI build without deferred patch** — optional workflow input to skip **`apply-deferred-game-patches.sh`**; same pins, only patch toggled.
+3. **Wow patch–only on 11-9.1 base** — apply current single patch to **11-9.1** wine tree (local or branch); if Bnet still OK, blame 11-11 base; if Bnet breaks, blame patch hunks (signal / KSDT / NLS / virtual map init).
+4. **Targeted repro captures** (each run): full **`session.log`**, **`compat_log.txt`**, latest **`battle.net-*.log`** + **`libcef-*.log`**, count of **`virtual_setup_exception`**, whether **`BrowserJS` / `getAuthToken timed out`** returns.
+
+### Forever-specific (unchanged goal)
+- Validate **`WowB-ARM64.exe`** on **11-11.1-arm64ec-wow** after Bnet prefix is stable; **`signal_arm64.c` `memset(CONTEXT)`** was for **Game Initialization Failed: I**, not observed on Classic yet.
+
 ## 2026-10-23 (2)
 
 ### 11-11.1: GE-Proton11-11, CachyOS 20261015, three GE master fixes

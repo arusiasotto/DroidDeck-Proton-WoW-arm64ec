@@ -1,0 +1,107 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: arusiasotto <4206983+arusiasotto@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 00:00:00 +0000
+Subject: [PATCH] ntdll: WoW bisect — syscall dispatch / KSDT / asm stubs.
+
+World of Warcraft Forever (WowB-ARM64.exe) is ARM64EC. Wine's PE syscall stubs and
+KeServiceDescriptorTable wiring must match deck-verified TEB/KSDT dispatch; manually
+mapped ntdll views need dispatcher init and NLS section fallback when maps fail.
+---
+diff --git a/dlls/ntdll/unix/syscall.c b/dlls/ntdll/unix/syscall.c
+index a7ca90ab06f..8388a43f4e1 100644
+--- a/dlls/ntdll/unix/syscall.c
++++ b/dlls/ntdll/unix/syscall.c
+@@ -244,9 +244,25 @@ static BYTE syscall_args[ARRAY_SIZE(syscalls)] =
+ #undef SYSCALL_ENTRY
+ };
+ 
++#ifdef __aarch64__
++extern void __wine_syscall_dispatcher(void);
++
++void ntdll_arm64ec_sync_syscall_dispatch( TEB *teb )
++{
++    struct ntdll_thread_data *thread_data = (struct ntdll_thread_data *)&teb->GdiTebBatch;
++
++    KeServiceDescriptorTable[0].CounterTable = (ULONG_PTR *)__wine_syscall_dispatcher;
++    thread_data->syscall_table = KeServiceDescriptorTable;
++}
++#endif
++
+ SYSTEM_SERVICE_TABLE KeServiceDescriptorTable[4] =
+ {
++#ifdef __aarch64__
++    { (ULONG_PTR *)syscalls, (ULONG_PTR *)__wine_syscall_dispatcher, ARRAY_SIZE(syscalls), syscall_args }
++#else
+     { (ULONG_PTR *)syscalls, NULL, ARRAY_SIZE(syscalls), syscall_args }
++#endif
+ };
+ 
+ static const char *ntsyscall_names[] =
+diff --git a/dlls/ntdll/unix/thread.c b/dlls/ntdll/unix/thread.c
+index 8e5070998de..42d62642396 100644
+--- a/dlls/ntdll/unix/thread.c
++++ b/dlls/ntdll/unix/thread.c
+@@ -1137,7 +1137,8 @@ static void start_thread( TEB *teb )
+     struct ntdll_thread_data *thread_data = (struct ntdll_thread_data *)&teb->GdiTebBatch;
+     BOOL suspend;
+ 
+-    thread_data->syscall_table = KeServiceDescriptorTable;
++    if (is_arm64ec()) ntdll_arm64ec_sync_syscall_dispatch( teb );
++    else thread_data->syscall_table = KeServiceDescriptorTable;
+     thread_data->syscall_trace = TRACE_ON(syscall);
+     thread_data->pthread_id = pthread_self();
+     pthread_setspecific( teb_key, teb );
+@@ -1271,6 +1272,7 @@ NTSTATUS init_thread_stack( TEB *teb, ULONG_PTR limit, SIZE_T reserve_size, SIZE
+         cpu_area->EmulatorStackBase  = (ULONG_PTR)stack.StackBase;
+         cpu_area->EmulatorStackLimit = (ULONG_PTR)stack.StackLimit + page_size;
+         teb->ChpeV2CpuAreaInfo = cpu_area;
++        ntdll_arm64ec_sync_syscall_dispatch( teb );
+     }
+ #endif
+ 
+diff --git a/dlls/ntdll/unix/unix_private.h b/dlls/ntdll/unix/unix_private.h
+index 9d2c5f464f7..9b87fe9ee55 100644
+--- a/dlls/ntdll/unix/unix_private.h
++++ b/dlls/ntdll/unix/unix_private.h
+@@ -358,6 +358,9 @@ extern void signal_init_process(void);
+ extern void DECLSPEC_NORETURN signal_start_thread( PRTL_THREAD_START_ROUTINE entry, void *arg,
+                                                    BOOL suspend, TEB *teb );
+ extern SYSTEM_SERVICE_TABLE KeServiceDescriptorTable[4];
++#ifdef __aarch64__
++void ntdll_arm64ec_sync_syscall_dispatch( TEB *teb );
++#endif
+ extern void __wine_syscall_dispatcher(void);
+ extern void __wine_syscall_dispatcher_return(void);
+ extern void __wine_unix_call_dispatcher(void);
+diff --git a/include/wine/asm.h b/include/wine/asm.h
+index 172d7c8aa6e..5f0bf64be0e 100644
+--- a/include/wine/asm.h
++++ b/include/wine/asm.h
+@@ -249,8 +249,8 @@
+                        ".seh_endprologue\n\t" \
+                        "mov x8, #(" #id ")\n\t" \
+                        "mov x9, x30\n\t" \
+-                       "ldr x16, 1f\n\t" \
+-                       "ldr x16, [x16]\n\t" \
++                       "ldr x16, [x18, #0x370]\n\t" \
++                       "ldr x16, [x16, #8]\n\t" \
+                        "blr x16\n\t" \
+                        "ret\n" \
+                        "1:\t.quad " __ASM_NAME("__wine_syscall_dispatcher") )
+@@ -260,9 +260,13 @@
+          ".seh_endprologue\n\t" \
+          "mov x8, #%0\n\t" \
+          "mov x9, x30\n\t" \
+-         "adrp x16, __wine_syscall_dispatcher\n\t" \
++         "ldr x16, [x18, #0x370]\n\t" \
++         "cbz x16, 1f\n\t" \
++         "ldr x16, [x16, #8]\n\t" \
++         "cbnz x16, 2f\n\t" \
++         "1:\tadrp x16, __wine_syscall_dispatcher\n\t" \
+          "ldr x16, [x16, :lo12:__wine_syscall_dispatcher]\n\t" \
+-         "blr x16\n\t" \
++         "2:\tblr x16\n\t" \
+          "ret\n\t" \
+          ".seh_endproc" :: "i" (id) )
+ #elif defined __arm64ec_x64__
+--

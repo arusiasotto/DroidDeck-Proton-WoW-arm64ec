@@ -1,0 +1,55 @@
+diff --git a/dlls/ntdll/unix/syscall.c b/dlls/ntdll/unix/syscall.c
+index 413f5f8..b8e4a21 100644
+--- a/dlls/ntdll/unix/syscall.c
++++ b/dlls/ntdll/unix/syscall.c
+@@ -246,6 +246,14 @@ static BYTE syscall_args[ARRAY_SIZE(syscalls)] =
+ 
+ #ifdef __aarch64__
+ extern void __wine_syscall_dispatcher(void);
++
++void ntdll_arm64ec_sync_syscall_dispatch( TEB *teb )
++{
++    struct ntdll_thread_data *thread_data = (struct ntdll_thread_data *)&teb->GdiTebBatch;
++
++    KeServiceDescriptorTable[0].CounterTable = (ULONG_PTR *)__wine_syscall_dispatcher;
++    thread_data->syscall_table = KeServiceDescriptorTable;
++}
+ #endif
+ 
+ SYSTEM_SERVICE_TABLE KeServiceDescriptorTable[4] =
+ {
+diff --git a/dlls/ntdll/unix/thread.c b/dlls/ntdll/unix/thread.c
+index 8e50709..42d6264 100644
+--- a/dlls/ntdll/unix/thread.c
++++ b/dlls/ntdll/unix/thread.c
+@@ -1137,7 +1137,8 @@ static void start_thread( TEB *teb )
+     struct ntdll_thread_data *thread_data = (struct ntdll_thread_data *)&teb->GdiTebBatch;
+     BOOL suspend;
+ 
+-    thread_data->syscall_table = KeServiceDescriptorTable;
++    if (is_arm64ec()) ntdll_arm64ec_sync_syscall_dispatch( teb );
++    else thread_data->syscall_table = KeServiceDescriptorTable;
+     thread_data->syscall_trace = TRACE_ON(syscall);
+     thread_data->pthread_id = pthread_self();
+     pthread_setspecific( teb_key, teb );
+@@ -1271,6 +1272,7 @@ NTSTATUS init_thread_stack( TEB *teb, ULONG_PTR limit, SIZE_T reserve_size, SIZE
+         cpu_area->EmulatorStackBase  = (ULONG_PTR)stack.StackBase;
+         cpu_area->EmulatorStackLimit = (ULONG_PTR)stack.StackLimit + page_size;
+         teb->ChpeV2CpuAreaInfo = cpu_area;
++        ntdll_arm64ec_sync_syscall_dispatch( teb );
+     }
+ #endif
+ 
+diff --git a/dlls/ntdll/unix/unix_private.h b/dlls/ntdll/unix/unix_private.h
+index 7cd3aa4..5a1b2c3 100644
+--- a/dlls/ntdll/unix/unix_private.h
++++ b/dlls/ntdll/unix/unix_private.h
+@@ -357,6 +357,9 @@ extern void DECLSPEC_NORETURN signal_start_thread( PRTL_THREAD_START_ROUTINE ent
+                                                    BOOL suspend, TEB *teb );
+ extern SYSTEM_SERVICE_TABLE KeServiceDescriptorTable[4];
++#ifdef __aarch64__
++void ntdll_arm64ec_sync_syscall_dispatch( TEB *teb );
++#endif
+ extern void __wine_syscall_dispatcher(void);
+ extern void __wine_syscall_dispatcher_return(void);
+ extern void __wine_unix_call_dispatcher(void);

@@ -1,0 +1,22 @@
+diff --git a/dlls/ntdll/unix/syscall.c b/dlls/ntdll/unix/syscall.c
+index a7ca90a..413f5f8 100644
+--- a/dlls/ntdll/unix/syscall.c
++++ b/dlls/ntdll/unix/syscall.c
+@@ -244,9 +244,17 @@ static BYTE syscall_args[ARRAY_SIZE(syscalls)] =
+ #undef SYSCALL_ENTRY
+ };
+ 
++#ifdef __aarch64__
++extern void __wine_syscall_dispatcher(void);
++#endif
++
+ SYSTEM_SERVICE_TABLE KeServiceDescriptorTable[4] =
+ {
++#ifdef __aarch64__
++    { (ULONG_PTR *)syscalls, (ULONG_PTR *)__wine_syscall_dispatcher, ARRAY_SIZE(syscalls), syscall_args }
++#else
+     { (ULONG_PTR *)syscalls, NULL, ARRAY_SIZE(syscalls), syscall_args }
++#endif
+ };
+ 
+ static const char *ntsyscall_names[] =

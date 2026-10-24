@@ -1,0 +1,146 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: arusiasotto <4206983+arusiasotto@users.noreply.github.com>
+Date: Fri, 23 Oct 2026 00:00:00 +0000
+Subject: [PATCH] ntdll: WoW bisect — NLS section fallback.
+
+World of Warcraft Forever (WowB-ARM64.exe) is ARM64EC. Wine's PE syscall stubs and
+KeServiceDescriptorTable wiring must match deck-verified TEB/KSDT dispatch; manually
+mapped ntdll views need dispatcher init and NLS section fallback when maps fail.
+---
+diff --git a/dlls/ntdll/unix/env.c b/dlls/ntdll/unix/env.c
+index 104b1eb90f8..75b91fb3b28 100644
+--- a/dlls/ntdll/unix/env.c
++++ b/dlls/ntdll/unix/env.c
+@@ -2227,6 +2227,97 @@ void *create_startup_info( const UNICODE_STRING *nt_image, ULONG process_flags,
+ }
+ 
+ 
++static NTSTATUS map_nls_file_as_view( const char *name, void **ptr, SIZE_T *size )
++{
++    const char *dir = build_dir ? build_dir : data_dir;
++    char *path;
++    struct stat st;
++    void *base = NULL, *file_data;
++    SIZE_T region_size;
++    ULONG old_protect;
++    NTSTATUS status;
++    int fd;
++
++    *ptr = NULL;
++    if (size) *size = 0;
++
++    if (asprintf( &path, "%s/nls/%s", dir, name ) == -1) return STATUS_NO_MEMORY;
++
++    if ((fd = open( path, O_RDONLY )) == -1)
++    {
++        free( path );
++        return STATUS_OBJECT_NAME_NOT_FOUND;
++    }
++    if (fstat( fd, &st ) == -1 || st.st_size <= 0x1000)
++    {
++        close( fd );
++        free( path );
++        return STATUS_OBJECT_NAME_NOT_FOUND;
++    }
++    close( fd );
++
++    region_size = (st.st_size + page_size - 1) & ~(page_size - 1);
++    status = NtAllocateVirtualMemory( GetCurrentProcess(), &base, 0, &region_size,
++                                      MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE );
++    if (status)
++    {
++        free( path );
++        return status;
++    }
++
++    if (!(file_data = read_nls_file( name )))
++    {
++        NtFreeVirtualMemory( GetCurrentProcess(), &base, &region_size, MEM_RELEASE );
++        free( path );
++        return STATUS_OBJECT_NAME_NOT_FOUND;
++    }
++    memcpy( base, file_data, st.st_size );
++    free( file_data );
++    free( path );
++
++    {
++        PVOID protect_base = base;
++        SIZE_T protect_size = region_size;
++
++        status = NtProtectVirtualMemory( GetCurrentProcess(), &protect_base, &protect_size,
++                                         PAGE_READONLY, &old_protect );
++    }
++    if (status)
++    {
++        NtFreeVirtualMemory( GetCurrentProcess(), &base, &region_size, MEM_RELEASE );
++        return status;
++    }
++
++    *ptr = base;
++    if (size) *size = st.st_size;
++    return STATUS_SUCCESS;
++}
++
++static NTSTATUS arm64ec_nls_section_fallback( UINT type, UINT id, void **ptr, SIZE_T *size )
++{
++    static const char * const default_chain[] = { "l_intl.nls", "c_1252.nls", "c_437.nls", NULL };
++    char *path, *basename;
++    unsigned int i;
++    NTSTATUS status;
++
++    if ((path = get_nls_file_path( type, id )))
++    {
++        basename = strrchr( path, '/' );
++        basename = basename ? basename + 1 : path;
++        status = map_nls_file_as_view( basename, ptr, size );
++        free( path );
++        if (!status) return STATUS_SUCCESS;
++    }
++
++    for (i = 0; default_chain[i]; i++)
++    {
++        status = map_nls_file_as_view( default_chain[i], ptr, size );
++        if (!status) return STATUS_SUCCESS;
++    }
++    return STATUS_UNSUCCESSFUL;
++}
++
++
+ /**************************************************************************
+  *      NtGetNlsSectionPtr  (NTDLL.@)
+  */
+@@ -2263,6 +2354,8 @@ NTSTATUS WINAPI NtGetNlsSectionPtr( ULONG type, ULONG id, void *unknown, void **
+         status = map_section( handle, ptr, size, PAGE_READONLY );
+         NtClose( handle );
+     }
++    if (status)
++        status = arm64ec_nls_section_fallback( type, id, ptr, size );
+     return status;
+ }
+ 
+@@ -2278,6 +2371,7 @@ NTSTATUS WINAPI NtInitializeNlsFiles( void **ptr, LCID *lcid, LARGE_INTEGER *siz
+     SIZE_T mapsize;
+     NTSTATUS status;
+ 
++    *lcid = system_lcid;
+     if (asprintf( &path, "%s/nls/locale.nls", dir ) == -1) return STATUS_NO_MEMORY;
+     status = open_nls_data_file( path, system_dir, &file );
+     free( path );
+@@ -2291,7 +2385,16 @@ NTSTATUS WINAPI NtInitializeNlsFiles( void **ptr, LCID *lcid, LARGE_INTEGER *siz
+         status = map_section( handle, ptr, &mapsize, PAGE_READONLY );
+         NtClose( handle );
+     }
+-    *lcid = system_lcid;
++    if (status)
++    {
++        status = map_nls_file_as_view( "locale.nls", ptr, &mapsize );
++        if (!status) *lcid = 0x0409;
++    }
++    if (!status)
++    {
++        if (size) size->QuadPart = mapsize;
++        if (*lcid != 0x0409) *lcid = system_lcid;
++    }
+     return status;
+ }
+ 
