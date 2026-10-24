@@ -9,8 +9,7 @@ running Windows games through ARM64 Proton with FEX.
 > not affiliated with GloriousEggroll, CachyOS or Valve. Please report problems here, not to those projects.
 
 This fork branch **`wine-tier8-upstream`** rebases on upstream **DroidDeck-Proton 11-11.1** (`banner-proton/11.11`,
-GE-Proton11-11) and adds one deferred **game patch** for **WoW Forever** (`WowB-ARM64.exe`, ARM64EC). Intended
-for [upstream PR #3](https://github.com/Droid-Deck/DroidDeck-Proton/pull/3). The separate **`main`** branch on
+GE-Proton11-11) and adds one deferred **game patch** for **WoW Forever** (`WowB-ARM64.exe`, ARM64EC). The separate **`main`** branch on
 this fork still tracks the older **11-9.1 ARM64EC WoW**–named release line for side-by-side testing on device.
 
 ## Install
