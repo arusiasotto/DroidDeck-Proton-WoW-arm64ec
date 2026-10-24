@@ -228,7 +228,7 @@ Local prep on a dev machine (host only, not the full container compile): follow
 [docs/README.GE-Proton.md](docs/README.GE-Proton.md) — clean `wine` at **`bp-11.11-tier6`**
 (`219dddec…`), then `banner-proton/prep.sh`, then `banner-proton/apply-deferred-game-patches.sh`, then
 `../configure.sh --target-arch=arm64 --build-name=DroidDeck-Proton-<version> --display-name="DroidDeck-Proton <version>"`
-with `<version>` from `banner-proton/VERSION` (currently **`11-11.1`**). Full **`make`** needs Docker/Podman and
+with `<version>` from `banner-proton/VERSION` (currently **`11-11.1-arm64ec-wow`** on this branch). Full **`make`** needs Docker/Podman and
 Valve's **arm64-llvm** SDK image from `banner-proton/PINS`; use native **arm64** CI or hardware for a trustworthy compile.
 
 </details>
